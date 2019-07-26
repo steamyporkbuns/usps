@@ -26,7 +26,7 @@ filepath <- "C:\\Users\\edwinysun\\Box\\Terner Center_Summer 2019\\USPS Data\\Ra
 temp <- paste0(filepath, temp)
 tbl <- lapply(temp, foreign::read.dbf)
 
-setwd("C:\\Users\\edwinysun\\Box\\Terner Center_Summer 2019\\USPS Data\\USPS Data Analysis")
+setwd("C:\\Users\\edwinysun\\Box\\Terner Center_Summer 2019\\USPS Data\\usps")
 ```
 
 # Merging all years into one long dataframe
@@ -44,8 +44,6 @@ names(tbl) <- c(2008:2018)
 
 df <- bind_rows(tbl, .id = "YEAR")
 ```
-
-# 
 
 
 # There seems to be some kind of machine error in this code chunk that ran fine for the past several weeks and now doesn't work.
@@ -307,6 +305,15 @@ acs <- read.csv("C:\\Users\\edwinysun\\Box\\Terner Center_Summer 2019\\USPS Data
 # The acs data is wide, and the LA/SF/Alameda data are long. To merge, we have to spread the county data and join by GEOID
 # It is difficult to group_by year to compute quintiles in wide. Gather the LA/SF/Alameda data into even longer format in order to add indicator variables for each census tract's quantile grouping for each occupancy variable.
 
+acs <- acs %>% select("Geo_GEOID", "ACS16_5yr_B25003002", "ACS16_5yr_B25003003", "ACS16_5yr_B25024001", "ACS16_5yr_B25024002", "ACS16_5yr_B03002001", "ACS16_5yr_B03002003", "ACS16_5yr_B03002004", "ACS16_5yr_B03002005", "ACS16_5yr_B03002006", "ACS16_5yr_B03002007", "ACS16_5yr_B03002008", "ACS16_5yr_B03002009", "ACS16_5yr_B03002012", "ACS16_5yr_B19001001", "ACS16_5yr_B19001002", "ACS16_5yr_B19001003", "ACS16_5yr_B19001004", "ACS16_5yr_B19001005", "ACS16_5yr_B19001006", "ACS16_5yr_B19001007", "ACS16_5yr_B19001008", "ACS16_5yr_B19001009", "ACS16_5yr_B19001010", "ACS16_5yr_B19001011", "ACS16_5yr_B19001012", "ACS16_5yr_B19001013", "ACS16_5yr_B19001014", "ACS16_5yr_B19001015", "ACS16_5yr_B19001016", "ACS16_5yr_B19001017", "ACS16_5yr_B15003001", "ACS16_5yr_B15003002", "ACS16_5yr_B15003003", "ACS16_5yr_B15003004", "ACS16_5yr_B15003005", "ACS16_5yr_B15003006", "ACS16_5yr_B15003007", "ACS16_5yr_B15003008", "ACS16_5yr_B15003009", "ACS16_5yr_B15003010", "ACS16_5yr_B15003011", "ACS16_5yr_B15003012", "ACS16_5yr_B15003013", "ACS16_5yr_B15003014", "ACS16_5yr_B15003015", "ACS16_5yr_B15003016", "ACS16_5yr_B15003017", "ACS16_5yr_B15003018", "ACS16_5yr_B15003019", "ACS16_5yr_B15003020", "ACS16_5yr_B15003021", "ACS16_5yr_B15003022", "ACS16_5yr_B15003023", "ACS16_5yr_B15003024", "ACS16_5yr_B15003025", "ACS16_5yr_B19057001", "ACS16_5yr_B19057002", "ACS16_5yr_B19057003")
+# Dropping irrelevant ACS variables.
+
+acs <- acs %>% separate(col = Geo_GEOID, into = c(NA, "GEOID"), sep = "US")
+# Parsing the Geo_GEOID variable.
+
+acs <- acs %>% mutate(prop_hisp = ACS16_5yr_B03002012/ACS16_5yr_B03002001, prop_black = ACS16_5yr_B03002004/ACS16_5yr_B03002001, prop_sfh = ACS16_5yr_B25024002/ACS16_5yr_B25024001, prop_hs_or_less = (ACS16_5yr_B15003002 + ACS16_5yr_B15003003 + ACS16_5yr_B15003004 + ACS16_5yr_B15003005 + ACS16_5yr_B15003006 + ACS16_5yr_B15003007 + ACS16_5yr_B15003008 + ACS16_5yr_B15003009 + ACS16_5yr_B15003010 + ACS16_5yr_B15003011 + ACS16_5yr_B15003012 + ACS16_5yr_B15003013 + ACS16_5yr_B15003014 + ACS16_5yr_B15003015 + ACS16_5yr_B15003016 + ACS16_5yr_B15003017 + ACS16_5yr_B15003018)/ACS16_5yr_B15003001, prop_collgrad = ACS16_5yr_B15003022/ACS16_5yr_B15003001, prop_postbac = (ACS16_5yr_B15003023 + ACS16_5yr_B15003024 + ACS16_5yr_B15003025)/ACS16_5yr_B15003001, prop_below_25k = (ACS16_5yr_B19001002 + ACS16_5yr_B19001003 + ACS16_5yr_B19001004 + ACS16_5yr_B19001005)/ACS16_5yr_B19001001, prop_over_100k = (ACS16_5yr_B19001014 + ACS16_5yr_B19001015 + ACS16_5yr_B19001016 + ACS16_5yr_B19001017)/ACS16_5yr_B19001001)
+# Reexpressing the demographic variables as proportions. 
+
 la_quintiles <- la_shp %>% select(-c(66:73))
 # Dropped the geometry because it was messing up the gather.
 
@@ -337,28 +344,34 @@ la_quintiles <- la_quintiles %>% select(GEOID, key, quintile)
 la_quintiles <- spread(la_quintiles, key = key, value = quintile)
 # Reshaping the rankings to wide
 
-acs <- acs %>% select("Geo_GEOID", "ACS16_5yr_B25003002", "ACS16_5yr_B25003003", "ACS16_5yr_B25024001", "ACS16_5yr_B25024002", "ACS16_5yr_B03002003", "ACS16_5yr_B03002004", "ACS16_5yr_B03002005", "ACS16_5yr_B03002006", "ACS16_5yr_B03002007", "ACS16_5yr_B03002008", "ACS16_5yr_B03002009", "ACS16_5yr_B03002012", "ACS16_5yr_B19001002", "ACS16_5yr_B19001003", "ACS16_5yr_B19001004", "ACS16_5yr_B19001005", "ACS16_5yr_B19001006", "ACS16_5yr_B19001007", "ACS16_5yr_B19001008", "ACS16_5yr_B19001009", "ACS16_5yr_B19001010", "ACS16_5yr_B19001011", "ACS16_5yr_B19001012", "ACS16_5yr_B19001013", "ACS16_5yr_B19001014", "ACS16_5yr_B19001015", "ACS16_5yr_B19001016", "ACS16_5yr_B19001017", "ACS16_5yr_B15003002", "ACS16_5yr_B15003003", "ACS16_5yr_B15003004", "ACS16_5yr_B15003005", "ACS16_5yr_B15003006", "ACS16_5yr_B15003007", "ACS16_5yr_B15003008", "ACS16_5yr_B15003009", "ACS16_5yr_B15003010", "ACS16_5yr_B15003011", "ACS16_5yr_B15003012", "ACS16_5yr_B15003013", "ACS16_5yr_B15003014", "ACS16_5yr_B15003015", "ACS16_5yr_B15003016", "ACS16_5yr_B15003017", "ACS16_5yr_B15003018", "ACS16_5yr_B15003019", "ACS16_5yr_B15003020", "ACS16_5yr_B15003021", "ACS16_5yr_B15003022", "ACS16_5yr_B15003023", "ACS16_5yr_B15003024", "ACS16_5yr_B15003025", "ACS16_5yr_B19057001", "ACS16_5yr_B19057002", "ACS16_5yr_B19057003")
-# Dropping irrelevant ACS variables.
-
-acs <- acs %>% separate(col = Geo_GEOID, into = c(NA, "GEOID"), sep = "US")
-# Parsing the Geo_GEOID variable.
-
 la_demographics <- left_join(x = la_quintiles, y = acs, by = "GEOID")
 # Joining the ACS data to into the quintiles data.
 
 la_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_hisp = mean(ACS16_5yr_B03002012), median_count_hisp = median(ACS16_5yr_B03002012))
 
-la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_hisp = mean(ACS16_5yr_B03002012), median_count_hisp = median(ACS16_5yr_B03002012)) %>% write.csv("hispanic.csv")
+la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_hisp = mean(ACS16_5yr_B03002012), median_count_hisp = median(ACS16_5yr_B03002012))
+
+la_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_hisp = mean(prop_hisp, na.rm = TRUE), median_prop_hisp = median(prop_hisp, na.rm = TRUE)) %>% write.csv("hispanic.csv")
+
+la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_hisp = mean(prop_hisp, na.rm = TRUE), median_prop_hisp = median(prop_hisp, na.rm = TRUE))
 # Descriptives on count Hispanic by nostat quintiles
 
 la_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_black = mean(ACS16_5yr_B03002004), median_count_black = median(ACS16_5yr_B03002004))
 
-la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_black = mean(ACS16_5yr_B03002004), median_count_black = median(ACS16_5yr_B03002004)) %>% write.csv("black.csv")
+la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_black = mean(ACS16_5yr_B03002004), median_count_black = median(ACS16_5yr_B03002004)) 
+
+la_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_black = mean(prop_black, na.rm = TRUE), median_prop_black = median(prop_black, na.rm = TRUE)) %>% write.csv("black.csv")
+
+la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_black = mean(prop_black, na.rm = TRUE), median_prop_black = median(prop_black, na.rm = TRUE))
 # Descriptives on count black by nostat quintiles
 
 la_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_sfh = mean(ACS16_5yr_B25024002), median_count_sfh = median(ACS16_5yr_B25024002))
 
-la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_sfh = mean(ACS16_5yr_B25024002), median_count_sfh = median(ACS16_5yr_B25024002)) %>% write.csv("sfh.csv")
+la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_sfh = mean(ACS16_5yr_B25024002), median_count_sfh = median(ACS16_5yr_B25024002))
+
+la_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_sfh = mean(prop_sfh, na.rm = TRUE), median_prop_sfh = median(prop_sfh, na.rm = TRUE)) %>% write.csv("sfh.csv")
+
+la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_sfh = mean(prop_sfh), median_prop_sfh = median(prop_sfh)) 
 # Descriptives on count single-family homes by nostat quintiles
 
 la_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_welfare = mean(ACS16_5yr_B19057002), median_count_welfare = median(ACS16_5yr_B19057002))
@@ -371,17 +384,29 @@ la_demographics <- la_demographics %>% mutate(hs_or_less = (ACS16_5yr_B15003002 
 
 la_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_hs_or_less = mean(hs_or_less), median_count_hs_or_less = median(hs_or_less))
 
-la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_hs_or_less = mean(hs_or_less), median_count_hs_or_less = median(hs_or_less)) %>% write.csv("hs_or_less.csv")
+la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_hs_or_less = mean(hs_or_less), median_count_hs_or_less = median(hs_or_less)) 
+
+la_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_hs_or_less = mean(prop_hs_or_less, na.rm = TRUE), median_prop_hs_or_less = median(prop_hs_or_less, na.rm = TRUE)) %>% write.csv("hs_or_less.csv")
+
+la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_hs_or_less = mean(prop_hs_or_less), median_prop_hs_or_less = median(prop_hs_or_less))
 # Descriptives on count of hs_or_less by nostat quintiles
 
 la_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_collgrad = mean(ACS16_5yr_B15003022), median_count_collgrad = median(ACS16_5yr_B15003022))
 
-la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_collgrad = mean(ACS16_5yr_B15003022), median_count_collgrad = median(ACS16_5yr_B15003022)) %>% write.csv("coll_grads.csv")
+la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_collgrad = mean(ACS16_5yr_B15003022), median_count_collgrad = median(ACS16_5yr_B15003022)) 
+
+la_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_collgrad = mean(prop_collgrad, na.rm = TRUE), median_prop_collgrad = median(prop_collgrad, na.rm = TRUE)) %>% write.csv("coll_grads.csv")
+
+la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_collgrad = mean(prop_collgrad), median_prop_collgrad = median(prop_collgrad)) 
 # Descriptives on count of college grads by nostat quintiles
 
 la_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_postbac = mean(postbac), median_count_postbac = median(postbac))
 
-la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_postbac = mean(postbac), median_count_postbac = median(postbac)) %>% write.csv("postbac.csv")
+la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_postbac = mean(postbac), median_count_postbac = median(postbac))
+
+la_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_postbac = mean(prop_postbac, na.rm = TRUE), median_prop_postbac = median(prop_postbac, na.rm = TRUE)) %>% write.csv("postbac.csv")
+
+la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_postbac = mean(prop_postbac), median_prop_postbac = median(prop_postbac))
 # Descriptives on count of advanced degree holders by nostat quintiles
 
 la_demographics <- la_demographics %>% mutate("below_25k" = (ACS16_5yr_B19001002 + ACS16_5yr_B19001003 + ACS16_5yr_B19001004 + ACS16_5yr_B19001005), "25k_to_50k" = (ACS16_5yr_B19001006 + ACS16_5yr_B19001007 + ACS16_5yr_B19001008 + ACS16_5yr_B19001009 + ACS16_5yr_B19001010), "50k_to_100k" = (ACS16_5yr_B19001011 + ACS16_5yr_B19001012 + ACS16_5yr_B19001013), "over_100k" = (ACS16_5yr_B19001014 + ACS16_5yr_B19001015 + ACS16_5yr_B19001016 + ACS16_5yr_B19001017))
@@ -389,13 +414,23 @@ la_demographics <- la_demographics %>% mutate("below_25k" = (ACS16_5yr_B19001002
 
 la_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_over_100k = mean(over_100k), median_count_over_100k = median(over_100k))
 
-la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_over_100k = mean(over_100k), median_count_over_100k = median(over_100k)) %>% write.csv("over_100k.csv")
+la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_over_100k = mean(over_100k), median_count_over_100k = median(over_100k)) 
+
+la_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_over_100k = mean(prop_over_100k, na.rm = TRUE), median_prop_over_100k = median(prop_over_100k, na.rm = TRUE)) %>% write.csv("over_100k.csv")
+
+la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_over_100k = mean(prop_over_100k, na.rm = TRUE), median_prop_over_100k = median(prop_over_100k)) 
 # Descriptives on count of households earning more than 100k by nostat quintiles
 
 la_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_below_25k = mean(below_25k), median_count_below_25k = median(below_25k))
 
-la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_below_25k = mean(below_25k), median_count_below_25k = median(below_25k)) %>% write.csv("below_25k.csv")
-# Descriptives on count of householders earning less than 25k by nostat quintiles
+la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_below_25k = mean(below_25k), median_count_below_25k = median(below_25k)) 
+
+la_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_below_25k = mean(prop_below_25k, na.rm = TRUE), median_prop_below_25k = median(prop_below_25k, na.rm = TRUE)) %>% write.csv("below_25k.csv")
+
+la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_below_25k = mean(prop_below_25k), median_prop_below_25k = median(prop_below_25k))
+# Descriptives on count of householders earning less than 25k by nostat quintiles 
+
+
 ```
 
 # Descriptives for Alameda 
@@ -427,17 +462,29 @@ alameda_demographics <- left_join(x = alameda_quintiles, y = acs, by = "GEOID")
 
 alameda_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_hisp = mean(ACS16_5yr_B03002012), median_count_hisp = median(ACS16_5yr_B03002012))
 
-alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_hisp = mean(ACS16_5yr_B03002012), median_count_hisp = median(ACS16_5yr_B03002012)) %>% write.csv("hispanic.csv")
+alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_hisp = mean(ACS16_5yr_B03002012), median_count_hisp = median(ACS16_5yr_B03002012)) 
+
+alameda_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_hisp = mean(prop_hisp, na.rm = TRUE), median_prop_hisp = median(prop_hisp, na.rm = TRUE)) %>% write.csv("hispanic.csv")
+
+alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_hisp = mean(prop_hisp, na.rm = TRUE), median_prop_hisp = median(prop_hisp, na.rm = TRUE))
 # Descriptives on count Hispanic by nostat quintiles
 
 alameda_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_black = mean(ACS16_5yr_B03002004), median_count_black = median(ACS16_5yr_B03002004))
 
-alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_black = mean(ACS16_5yr_B03002004), median_count_black = median(ACS16_5yr_B03002004)) %>% write.csv("black.csv")
+alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_black = mean(ACS16_5yr_B03002004), median_count_black = median(ACS16_5yr_B03002004))
+
+alameda_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_black = mean(prop_black, na.rm = TRUE), median_prop_black = median(prop_black, na.rm = TRUE)) %>% write.csv("black.csv")
+
+alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_black = mean(prop_black, na.rm = TRUE), median_prop_black = median(prop_black, na.rm = TRUE))
 # Descriptives on count black by nostat quintiles
 
 alameda_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_sfh = mean(ACS16_5yr_B25024002), median_count_sfh = median(ACS16_5yr_B25024002))
 
-alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_sfh = mean(ACS16_5yr_B25024002), median_count_sfh = median(ACS16_5yr_B25024002)) %>% write.csv("sfh.csv")
+alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_sfh = mean(ACS16_5yr_B25024002), median_count_sfh = median(ACS16_5yr_B25024002))
+
+alameda_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_sfh = mean(prop_sfh, na.rm = TRUE), median_prop_sfh = median(prop_sfh, na.rm = TRUE)) %>% write.csv("sfh.csv")
+
+alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_sfh = mean(prop_sfh), median_prop_sfh = median(prop_sfh)) 
 # Descriptives on count single-family homes by nostat quintiles
 
 alameda_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_welfare = mean(ACS16_5yr_B19057002), median_count_welfare = median(ACS16_5yr_B19057002))
@@ -450,17 +497,29 @@ alameda_demographics <- alameda_demographics %>% mutate(hs_or_less = (ACS16_5yr_
 
 alameda_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_hs_or_less = mean(hs_or_less), median_count_hs_or_less = median(hs_or_less))
 
-alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_hs_or_less = mean(hs_or_less), median_count_hs_or_less = median(hs_or_less)) %>% write.csv("hs_or_less.csv")
+alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_hs_or_less = mean(hs_or_less), median_count_hs_or_less = median(hs_or_less))
+
+alameda_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_hs_or_less = mean(prop_hs_or_less, na.rm = TRUE), median_prop_hs_or_less = median(prop_hs_or_less, na.rm = TRUE)) %>% write.csv("hs_or_less.csv")
+
+alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_hs_or_less = mean(prop_hs_or_less), median_prop_hs_or_less = median(prop_hs_or_less))
 # Descriptives on count of hs_or_less by nostat quintiles
 
 alameda_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_collgrad = mean(ACS16_5yr_B15003022), median_count_collgrad = median(ACS16_5yr_B15003022))
 
-alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_collgrad = mean(ACS16_5yr_B15003022), median_count_collgrad = median(ACS16_5yr_B15003022)) %>% write.csv("coll_grads.csv")
+alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_collgrad = mean(ACS16_5yr_B15003022), median_count_collgrad = median(ACS16_5yr_B15003022)) 
+
+alameda_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_collgrad = mean(prop_collgrad, na.rm = TRUE), median_prop_collgrad = median(prop_collgrad, na.rm = TRUE)) %>% write.csv("coll_grads.csv")
+
+alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_collgrad = mean(prop_collgrad), median_prop_collgrad = median(prop_collgrad)) 
 # Descriptives on count of college grads by nostat quintiles
 
 alameda_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_postbac = mean(postbac), median_count_postbac = median(postbac))
 
-alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_postbac = mean(postbac), median_count_postbac = median(postbac)) %>% write.csv("postbac.csv")
+alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_postbac = mean(postbac), median_count_postbac = median(postbac)) 
+
+alameda_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_postbac = mean(prop_postbac, na.rm = TRUE), median_prop_postbac = median(prop_postbac, na.rm = TRUE)) %>% write.csv("postbac.csv")
+
+alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_postbac = mean(prop_postbac), median_prop_postbac = median(prop_postbac))
 # Descriptives on count of advanced degree holders by nostat quintiles
 
 alameda_demographics <- alameda_demographics %>% mutate("below_25k" = (ACS16_5yr_B19001002 + ACS16_5yr_B19001003 + ACS16_5yr_B19001004 + ACS16_5yr_B19001005), "25k_to_50k" = (ACS16_5yr_B19001006 + ACS16_5yr_B19001007 + ACS16_5yr_B19001008 + ACS16_5yr_B19001009 + ACS16_5yr_B19001010), "50k_to_100k" = (ACS16_5yr_B19001011 + ACS16_5yr_B19001012 + ACS16_5yr_B19001013), "over_100k" = (ACS16_5yr_B19001014 + ACS16_5yr_B19001015 + ACS16_5yr_B19001016 + ACS16_5yr_B19001017))
@@ -468,12 +527,20 @@ alameda_demographics <- alameda_demographics %>% mutate("below_25k" = (ACS16_5yr
 
 alameda_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_over_100k = mean(over_100k), median_count_over_100k = median(over_100k))
 
-alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_over_100k = mean(over_100k), median_count_over_100k = median(over_100k)) %>% write.csv("over_100k.csv")
+alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_over_100k = mean(over_100k), median_count_over_100k = median(over_100k))
+
+alameda_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_over_100k = mean(prop_over_100k, na.rm = TRUE), median_prop_over_100k = median(prop_over_100k, na.rm = TRUE)) %>% write.csv("over_100k.csv")
+
+alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_over_100k = mean(prop_over_100k, na.rm = TRUE), median_prop_over_100k = median(prop_over_100k)) 
 # Descriptives on count of households earning more than 100k by nostat quintiles
 
 alameda_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_below_25k = mean(below_25k), median_count_below_25k = median(below_25k))
 
-alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_below_25k = mean(below_25k), median_count_below_25k = median(below_25k)) %>% write.csv("below_25k.csv")
+alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_below_25k = mean(below_25k), median_count_below_25k = median(below_25k))
+
+alameda_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_below_25k = mean(prop_below_25k, na.rm = TRUE), median_prop_below_25k = median(prop_below_25k, na.rm = TRUE)) %>% write.csv("below_25k.csv")
+
+alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_below_25k = mean(prop_below_25k), median_prop_below_25k = median(prop_below_25k))
 # Descriptives on count of householders earning less than 25k by nostat quintiles
 ```
 
@@ -506,17 +573,29 @@ sf_demographics <- left_join(x = sf_quintiles, y = acs, by = "GEOID")
 
 sf_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_hisp = mean(ACS16_5yr_B03002012), median_count_hisp = median(ACS16_5yr_B03002012))
 
-sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_hisp = mean(ACS16_5yr_B03002012), median_count_hisp = median(ACS16_5yr_B03002012)) %>% write.csv("hispanic.csv")
+sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_hisp = mean(ACS16_5yr_B03002012), median_count_hisp = median(ACS16_5yr_B03002012)) 
+
+sf_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_hisp = mean(prop_hisp, na.rm = TRUE), median_prop_hisp = median(prop_hisp, na.rm = TRUE)) %>% write.csv("hispanic.csv")
+
+sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_hisp = mean(prop_hisp, na.rm = TRUE), median_prop_hisp = median(prop_hisp, na.rm = TRUE))
 # Descriptives on count Hispanic by nostat quintiles
 
 sf_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_black = mean(ACS16_5yr_B03002004), median_count_black = median(ACS16_5yr_B03002004))
 
-sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_black = mean(ACS16_5yr_B03002004), median_count_black = median(ACS16_5yr_B03002004)) %>% write.csv("black.csv")
+sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_black = mean(ACS16_5yr_B03002004), median_count_black = median(ACS16_5yr_B03002004))
+
+sf_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_black = mean(prop_black, na.rm = TRUE), median_prop_black = median(prop_black, na.rm = TRUE)) %>% write.csv("black.csv")
+
+sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_black = mean(prop_black, na.rm = TRUE), median_prop_black = median(prop_black, na.rm = TRUE))
 # Descriptives on count black by nostat quintiles
 
 sf_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_sfh = mean(ACS16_5yr_B25024002), median_count_sfh = median(ACS16_5yr_B25024002))
 
-sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_sfh = mean(ACS16_5yr_B25024002), median_count_sfh = median(ACS16_5yr_B25024002)) %>% write.csv("sfh.csv")
+sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_sfh = mean(ACS16_5yr_B25024002), median_count_sfh = median(ACS16_5yr_B25024002)) 
+
+sf_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_sfh = mean(prop_sfh, na.rm = TRUE), median_prop_sfh = median(prop_sfh, na.rm = TRUE)) %>% write.csv("sfh.csv")
+
+sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_sfh = mean(prop_sfh), median_prop_sfh = median(prop_sfh)) 
 # Descriptives on count single-family homes by nostat quintiles
 
 sf_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_welfare = mean(ACS16_5yr_B19057002), median_count_welfare = median(ACS16_5yr_B19057002))
@@ -529,17 +608,29 @@ sf_demographics <- sf_demographics %>% mutate(hs_or_less = (ACS16_5yr_B15003002 
 
 sf_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_hs_or_less = mean(hs_or_less), median_count_hs_or_less = median(hs_or_less))
 
-sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_hs_or_less = mean(hs_or_less), median_count_hs_or_less = median(hs_or_less)) %>% write.csv("hs_or_less.csv")
+sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_hs_or_less = mean(hs_or_less), median_count_hs_or_less = median(hs_or_less)) 
+
+sf_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_hs_or_less = mean(prop_hs_or_less, na.rm = TRUE), median_prop_hs_or_less = median(prop_hs_or_less, na.rm = TRUE)) %>% write.csv("hs_or_less.csv")
+
+sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_hs_or_less = mean(prop_hs_or_less), median_prop_hs_or_less = median(prop_hs_or_less))
 # Descriptives on count of hs_or_less by nostat quintiles
 
 sf_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_collgrad = mean(ACS16_5yr_B15003022), median_count_collgrad = median(ACS16_5yr_B15003022))
 
-sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_collgrad = mean(ACS16_5yr_B15003022), median_count_collgrad = median(ACS16_5yr_B15003022)) %>% write.csv("coll_grads.csv")
+sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_collgrad = mean(ACS16_5yr_B15003022), median_count_collgrad = median(ACS16_5yr_B15003022)) 
+
+sf_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_collgrad = mean(prop_collgrad, na.rm = TRUE), median_prop_collgrad = median(prop_collgrad, na.rm = TRUE)) %>% write.csv("coll_grads.csv")
+
+sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_collgrad = mean(prop_collgrad), median_prop_collgrad = median(prop_collgrad)) 
 # Descriptives on count of college grads by nostat quintiles
 
 sf_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_postbac = mean(postbac), median_count_postbac = median(postbac))
 
-sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_postbac = mean(postbac), median_count_postbac = median(postbac)) %>% write.csv("postbac.csv")
+sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_postbac = mean(postbac), median_count_postbac = median(postbac))
+
+sf_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_postbac = mean(prop_postbac, na.rm = TRUE), median_prop_postbac = median(prop_postbac, na.rm = TRUE)) %>% write.csv("postbac.csv")
+
+sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_postbac = mean(prop_postbac), median_prop_postbac = median(prop_postbac))
 # Descriptives on count of advanced degree holders by nostat quintiles
 
 sf_demographics <- sf_demographics %>% mutate("below_25k" = (ACS16_5yr_B19001002 + ACS16_5yr_B19001003 + ACS16_5yr_B19001004 + ACS16_5yr_B19001005), "25k_to_50k" = (ACS16_5yr_B19001006 + ACS16_5yr_B19001007 + ACS16_5yr_B19001008 + ACS16_5yr_B19001009 + ACS16_5yr_B19001010), "50k_to_100k" = (ACS16_5yr_B19001011 + ACS16_5yr_B19001012 + ACS16_5yr_B19001013), "over_100k" = (ACS16_5yr_B19001014 + ACS16_5yr_B19001015 + ACS16_5yr_B19001016 + ACS16_5yr_B19001017))
@@ -547,12 +638,20 @@ sf_demographics <- sf_demographics %>% mutate("below_25k" = (ACS16_5yr_B19001002
 
 sf_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_over_100k = mean(over_100k), median_count_over_100k = median(over_100k))
 
-sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_over_100k = mean(over_100k), median_count_over_100k = median(over_100k)) %>% write.csv("over_100k.csv")
+sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_over_100k = mean(over_100k), median_count_over_100k = median(over_100k))
+
+sf_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_over_100k = mean(prop_over_100k, na.rm = TRUE), median_prop_over_100k = median(prop_over_100k, na.rm = TRUE)) %>% write.csv("over_100k.csv")
+
+sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_over_100k = mean(prop_over_100k, na.rm = TRUE), median_prop_over_100k = median(prop_over_100k)) 
 # Descriptives on count of households earning more than 100k by nostat quintiles
 
 sf_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_below_25k = mean(below_25k), median_count_below_25k = median(below_25k))
 
-sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_below_25k = mean(below_25k), median_count_below_25k = median(below_25k)) %>% write.csv("below_25k.csv")
+sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_below_25k = mean(below_25k), median_count_below_25k = median(below_25k)) 
+
+sf_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_below_25k = mean(prop_below_25k, na.rm = TRUE), median_prop_below_25k = median(prop_below_25k, na.rm = TRUE)) %>% write.csv("below_25k.csv")
+
+sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_below_25k = mean(prop_below_25k), median_prop_below_25k = median(prop_below_25k))
 # Descriptives on count of householders earning less than 25k by nostat quintiles
 ```
 
