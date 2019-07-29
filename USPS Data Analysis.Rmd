@@ -46,7 +46,7 @@ df <- bind_rows(tbl, .id = "YEAR")
 ```
 
 
-# There seems to be some kind of machine error in this code chunk that ran fine for the past several weeks and now doesn't work.
+# There seems to be some kind of machine error in this code chunk that ran fine for the past several weeks and now doesn't seem to work.
 ```{r}
 
 # Write a function for joining each year's data into one df using GEOID as key.
@@ -298,7 +298,7 @@ sf_shp %>%
 }
 ```
 
-# Reading in and joining the ACS data for LA
+# Grouping LA occupancy-type/year pairs into quintiles and joining to ACS 2016 data
 ```{r}
 acs <- read.csv("C:\\Users\\edwinysun\\Box\\Terner Center_Summer 2019\\USPS Data\\Raw data\\ACS\\Aggregated_Nghbr_Census&ACS_1990to2016.csv")
 
@@ -347,6 +347,186 @@ la_quintiles <- spread(la_quintiles, key = key, value = quintile)
 la_demographics <- left_join(x = la_quintiles, y = acs, by = "GEOID")
 # Joining the ACS data to into the quintiles data.
 
+la_demographics <- la_demographics %>% mutate(count_nostat_high = case_when(`NOSTAT_RES-2008` > 3 ~ 1,
+                                                                            `NOSTAT_RES-2009` > 3 ~ 1,
+                                                                            `NOSTAT_RES-2010` > 3 ~ 1,
+                                                                            `NOSTAT_RES-2011` > 3 ~ 1,
+                                                                            `NOSTAT_RES-2012` > 3 ~ 1,
+                                                                            `NOSTAT_RES-2013` > 3 ~ 1,
+                                                                            `NOSTAT_RES-2014` > 3 ~ 1,
+                                                                            `NOSTAT_RES-2015` > 3 ~ 1,
+                                                                            `NOSTAT_RES-2016` > 3 ~ 1,
+                                                                            TRUE ~ 0
+                                                                            ),
+                                              prop_nostat_high = case_when(`PROP_NOSTAT_RES-2008` > 3 ~ 1,
+                                                                           `PROP_NOSTAT_RES-2009` > 3 ~ 1,
+                                                                           `PROP_NOSTAT_RES-2010` > 3 ~ 1,
+                                                                           `PROP_NOSTAT_RES-2011` > 3 ~ 1,
+                                                                           `PROP_NOSTAT_RES-2012` > 3 ~ 1,
+                                                                           `PROP_NOSTAT_RES-2013` > 3 ~ 1,
+                                                                           `PROP_NOSTAT_RES-2014` > 3 ~ 1,
+                                                                           `PROP_NOSTAT_RES-2015` > 3 ~ 1,
+                                                                           `PROP_NOSTAT_RES-2016` > 3 ~ 1,
+                                                                           TRUE ~ 0
+                                                                           )
+                                              )
+# Create indicator variables for census tracts that have ever been in the top quintile for count/prop NOSTAT.   
+# Excluded years 2017-2018 because we're using 2016 census data.
+
+la_demographics <- la_demographics %>% mutate(count_nostat_low_to_high = case_when(count_nostat_high == 1 & `NOSTAT_RES-2008` < 3 ~ 1,
+                                                                                   count_nostat_high == 1 & `NOSTAT_RES-2009` < 3 ~ 1,
+                                                                                   count_nostat_high == 1 & `NOSTAT_RES-2010` < 3 ~ 1,
+                                                                                   TRUE ~ 0
+                                                                                   ),
+                                              prop_nostat_low_to_high = case_when(prop_nostat_high == 1 & `PROP_NOSTAT_RES-2008` < 3 ~ 1,
+                                                                                  prop_nostat_high == 1 & `PROP_NOSTAT_RES-2009` < 3 ~ 1,
+                                                                                  prop_nostat_high == 1 & `PROP_NOSTAT_RES-2010` < 3 ~ 1,
+                                                                                  TRUE ~ 0)
+                                              )
+# Create indicator variables for census tracts that started in the lowest quintiles and later became high NOSTAT.
+
+```
+
+# Grouping Alameda occupancy-type/year pairs into quintiles and joining to ACS 2016 data
+```{r}
+alameda_shp <- alameda_shp %>% st_set_geometry(NULL)
+
+alameda_shp <- alameda_shp %>% select(-c(66:76))
+
+alameda_quintiles <- gather(alameda_shp, "count_type", "counts", c(5:65))
+alameda_quintiles <- alameda_quintiles %>% arrange(GEOID)
+
+alameda_quintiles <- alameda_quintiles %>% select(GEOID, State, County, count_type, YEAR, counts) %>% unite(col = "key", c(count_type, YEAR), sep = "-")
+
+alameda_quintiles <- alameda_quintiles %>% group_by(key) %>% mutate(quintile1 = quantile(counts, probs = 0.2, na.rm = TRUE), quintile2 = quantile(counts, probs = 0.4, na.rm = TRUE), quintile3 = quantile(counts, probs = 0.6, na.rm = TRUE), quintile4 = quantile(counts, probs = 0.8, na.rm = TRUE))
+
+alameda_quintiles <- alameda_quintiles %>% mutate(quintile = case_when(counts <= quintile1 ~ 1,
+                                                                   (counts > quintile1 & counts <= quintile2) ~ 2,
+                                                                   (counts > quintile2 & counts <= quintile3) ~ 3,
+                                                                   (counts > quintile3 & counts <= quintile4) ~ 4,
+                                                                   counts > quintile4 ~ 5,
+                                                                   TRUE ~ 0)
+                                              )
+
+alameda_quintiles <- alameda_quintiles %>% select(GEOID, key, quintile)
+
+alameda_quintiles <- spread(alameda_quintiles, key = key, value = quintile)
+
+alameda_demographics <- left_join(x = alameda_quintiles, y = acs, by = "GEOID")
+
+alameda_demographics <- alameda_demographics %>% mutate(count_nostat_high = case_when(`NOSTAT_RES-2008` > 3 ~ 1,
+                                                                            `NOSTAT_RES-2009` > 3 ~ 1,
+                                                                            `NOSTAT_RES-2010` > 3 ~ 1,
+                                                                            `NOSTAT_RES-2011` > 3 ~ 1,
+                                                                            `NOSTAT_RES-2012` > 3 ~ 1,
+                                                                            `NOSTAT_RES-2013` > 3 ~ 1,
+                                                                            `NOSTAT_RES-2014` > 3 ~ 1,
+                                                                            `NOSTAT_RES-2015` > 3 ~ 1,
+                                                                            `NOSTAT_RES-2016` > 3 ~ 1,
+                                                                            TRUE ~ 0
+                                                                            ),
+                                              prop_nostat_high = case_when(`PROP_NOSTAT_RES-2008` > 3 ~ 1,
+                                                                           `PROP_NOSTAT_RES-2009` > 3 ~ 1,
+                                                                           `PROP_NOSTAT_RES-2010` > 3 ~ 1,
+                                                                           `PROP_NOSTAT_RES-2011` > 3 ~ 1,
+                                                                           `PROP_NOSTAT_RES-2012` > 3 ~ 1,
+                                                                           `PROP_NOSTAT_RES-2013` > 3 ~ 1,
+                                                                           `PROP_NOSTAT_RES-2014` > 3 ~ 1,
+                                                                           `PROP_NOSTAT_RES-2015` > 3 ~ 1,
+                                                                           `PROP_NOSTAT_RES-2016` > 3 ~ 1,
+                                                                           TRUE ~ 0
+                                                                           )
+                                              )
+# Create indicator variables for census tracts that have ever been in the top quintile for count/prop NOSTAT.   
+# Excluded years 2017-2018 because we're using 2016 census data.
+
+alameda_demographics <- alameda_demographics %>% 
+  mutate(count_nostat_low_to_high = case_when(count_nostat_high == 1 & `NOSTAT_RES-2008` < 3 ~ 1,
+                                              count_nostat_high == 1 & `NOSTAT_RES-2009` < 3 ~ 1,
+                                              count_nostat_high == 1 & `NOSTAT_RES-2010` < 3 ~ 1,
+                                              TRUE ~ 0
+                                              ),
+         prop_nostat_low_to_high = case_when(prop_nostat_high == 1 & `PROP_NOSTAT_RES-2008` < 3 ~ 1,
+                                             prop_nostat_high == 1 & `PROP_NOSTAT_RES-2009` < 3 ~ 1,
+                                             prop_nostat_high == 1 & `PROP_NOSTAT_RES-2010` < 3 ~ 1,
+                                             TRUE ~ 0
+                                             )
+         )
+# Create indicator variables for census tracts that started in the lowest quintiles and later became high NOSTAT.
+
+
+```
+
+# Grouping SF occupancy-type/year pairs into quintiles and joining to ACS 2016 data
+```{r}
+sf_shp <- sf_shp %>% st_set_geometry(NULL)
+
+sf_shp <- sf_shp %>% select(-c(66:76))
+
+sf_quintiles <- gather(sf_shp, "count_type", "counts", c(5:65))
+sf_quintiles <- sf_quintiles %>% arrange(GEOID)
+
+sf_quintiles <- sf_quintiles %>% select(GEOID, State, County, count_type, YEAR, counts) %>% unite(col = "key", c(count_type, YEAR), sep = "-")
+
+sf_quintiles <- sf_quintiles %>% group_by(key) %>% mutate(quintile1 = quantile(counts, probs = 0.2, na.rm = TRUE), quintile2 = quantile(counts, probs = 0.4, na.rm = TRUE), quintile3 = quantile(counts, probs = 0.6, na.rm = TRUE), quintile4 = quantile(counts, probs = 0.8, na.rm = TRUE))
+
+sf_quintiles <- sf_quintiles %>% mutate(quintile = case_when(counts <= quintile1 ~ 1,
+                                                                   (counts > quintile1 & counts <= quintile2) ~ 2,
+                                                                   (counts > quintile2 & counts <= quintile3) ~ 3,
+                                                                   (counts > quintile3 & counts <= quintile4) ~ 4,
+                                                                   counts > quintile4 ~ 5,
+                                                                   TRUE ~ 0)
+                                              )
+
+sf_quintiles <- sf_quintiles %>% select(GEOID, key, quintile)
+
+sf_quintiles <- spread(sf_quintiles, key = key, value = quintile)
+
+sf_demographics <- left_join(x = sf_quintiles, y = acs, by = "GEOID")
+
+sf_demographics <- sf_demographics %>% mutate(count_nostat_high = case_when(`NOSTAT_RES-2008` > 3 ~ 1,
+                                                                            `NOSTAT_RES-2009` > 3 ~ 1,
+                                                                            `NOSTAT_RES-2010` > 3 ~ 1,
+                                                                            `NOSTAT_RES-2011` > 3 ~ 1,
+                                                                            `NOSTAT_RES-2012` > 3 ~ 1,
+                                                                            `NOSTAT_RES-2013` > 3 ~ 1,
+                                                                            `NOSTAT_RES-2014` > 3 ~ 1,
+                                                                            `NOSTAT_RES-2015` > 3 ~ 1,
+                                                                            `NOSTAT_RES-2016` > 3 ~ 1,
+                                                                            TRUE ~ 0
+                                                                            ),
+                                              prop_nostat_high = case_when(`PROP_NOSTAT_RES-2008` > 3 ~ 1,
+                                                                           `PROP_NOSTAT_RES-2009` > 3 ~ 1,
+                                                                           `PROP_NOSTAT_RES-2010` > 3 ~ 1,
+                                                                           `PROP_NOSTAT_RES-2011` > 3 ~ 1,
+                                                                           `PROP_NOSTAT_RES-2012` > 3 ~ 1,
+                                                                           `PROP_NOSTAT_RES-2013` > 3 ~ 1,
+                                                                           `PROP_NOSTAT_RES-2014` > 3 ~ 1,
+                                                                           `PROP_NOSTAT_RES-2015` > 3 ~ 1,
+                                                                           `PROP_NOSTAT_RES-2016` > 3 ~ 1,
+                                                                           TRUE ~ 0
+                                                                           )
+                                              )
+# Create indicator variables for census tracts that have ever been in the top quintile for count/prop NOSTAT.   
+# Excluded years 2017-2018 because we're using 2016 census data.
+
+sf_demographics <- sf_demographics %>% mutate(count_nostat_low_to_high = case_when(count_nostat_high == 1 & `NOSTAT_RES-2008` < 3 ~ 1,
+                                                                                   count_nostat_high == 1 & `NOSTAT_RES-2009` < 3 ~ 1,
+                                                                                   count_nostat_high == 1 & `NOSTAT_RES-2010` < 3 ~ 1,
+                                                                                   TRUE ~ 0
+                                                                                   ),
+                                              prop_nostat_low_to_high = case_when(prop_nostat_high == 1 & `PROP_NOSTAT_RES-2008` < 3 ~ 1,
+                                                                                  prop_nostat_high == 1 & `PROP_NOSTAT_RES-2009` < 3 ~ 1,
+                                                                                  prop_nostat_high == 1 & `PROP_NOSTAT_RES-2010` < 3 ~ 1,
+                                                                                  TRUE ~ 0)
+                                              )
+# Create indicator variables for census tracts that started in the lowest quintiles and later became high NOSTAT.
+
+
+```
+
+# Pulling descriptives for 2016, Los Angeles
+```{r}
 la_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_hisp = mean(ACS16_5yr_B03002012), median_count_hisp = median(ACS16_5yr_B03002012))
 
 la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_hisp = mean(ACS16_5yr_B03002012), median_count_hisp = median(ACS16_5yr_B03002012))
@@ -430,36 +610,10 @@ la_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_belo
 la_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_below_25k = mean(prop_below_25k), median_prop_below_25k = median(prop_below_25k))
 # Descriptives on count of householders earning less than 25k by nostat quintiles 
 
-
 ```
 
-# Descriptives for Alameda 
+# Pulling descriptives for 2016, Alameda
 ```{r}
-alameda_shp <- alameda_shp %>% st_set_geometry(NULL)
-
-alameda_shp <- alameda_shp %>% select(-c(66:76))
-
-alameda_quintiles <- gather(alameda_shp, "count_type", "counts", c(5:65))
-alameda_quintiles <- alameda_quintiles %>% arrange(GEOID)
-
-alameda_quintiles <- alameda_quintiles %>% select(GEOID, State, County, count_type, YEAR, counts) %>% unite(col = "key", c(count_type, YEAR), sep = "-")
-
-alameda_quintiles <- alameda_quintiles %>% group_by(key) %>% mutate(quintile1 = quantile(counts, probs = 0.2, na.rm = TRUE), quintile2 = quantile(counts, probs = 0.4, na.rm = TRUE), quintile3 = quantile(counts, probs = 0.6, na.rm = TRUE), quintile4 = quantile(counts, probs = 0.8, na.rm = TRUE))
-
-alameda_quintiles <- alameda_quintiles %>% mutate(quintile = case_when(counts <= quintile1 ~ 1,
-                                                                   (counts > quintile1 & counts <= quintile2) ~ 2,
-                                                                   (counts > quintile2 & counts <= quintile3) ~ 3,
-                                                                   (counts > quintile3 & counts <= quintile4) ~ 4,
-                                                                   counts > quintile4 ~ 5,
-                                                                   TRUE ~ 0)
-                                              )
-
-alameda_quintiles <- alameda_quintiles %>% select(GEOID, key, quintile)
-
-alameda_quintiles <- spread(alameda_quintiles, key = key, value = quintile)
-
-alameda_demographics <- left_join(x = alameda_quintiles, y = acs, by = "GEOID")
-
 alameda_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_hisp = mean(ACS16_5yr_B03002012), median_count_hisp = median(ACS16_5yr_B03002012))
 
 alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_hisp = mean(ACS16_5yr_B03002012), median_count_hisp = median(ACS16_5yr_B03002012)) 
@@ -544,33 +698,8 @@ alameda_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_belo
 # Descriptives on count of householders earning less than 25k by nostat quintiles
 ```
 
-# Descriptives for SF
+# Pulling descriptives for 2016, SF
 ```{r}
-sf_shp <- sf_shp %>% st_set_geometry(NULL)
-
-sf_shp <- sf_shp %>% select(-c(66:76))
-
-sf_quintiles <- gather(sf_shp, "count_type", "counts", c(5:65))
-sf_quintiles <- sf_quintiles %>% arrange(GEOID)
-
-sf_quintiles <- sf_quintiles %>% select(GEOID, State, County, count_type, YEAR, counts) %>% unite(col = "key", c(count_type, YEAR), sep = "-")
-
-sf_quintiles <- sf_quintiles %>% group_by(key) %>% mutate(quintile1 = quantile(counts, probs = 0.2, na.rm = TRUE), quintile2 = quantile(counts, probs = 0.4, na.rm = TRUE), quintile3 = quantile(counts, probs = 0.6, na.rm = TRUE), quintile4 = quantile(counts, probs = 0.8, na.rm = TRUE))
-
-sf_quintiles <- sf_quintiles %>% mutate(quintile = case_when(counts <= quintile1 ~ 1,
-                                                                   (counts > quintile1 & counts <= quintile2) ~ 2,
-                                                                   (counts > quintile2 & counts <= quintile3) ~ 3,
-                                                                   (counts > quintile3 & counts <= quintile4) ~ 4,
-                                                                   counts > quintile4 ~ 5,
-                                                                   TRUE ~ 0)
-                                              )
-
-sf_quintiles <- sf_quintiles %>% select(GEOID, key, quintile)
-
-sf_quintiles <- spread(sf_quintiles, key = key, value = quintile)
-
-sf_demographics <- left_join(x = sf_quintiles, y = acs, by = "GEOID")
-
 sf_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_count_hisp = mean(ACS16_5yr_B03002012), median_count_hisp = median(ACS16_5yr_B03002012))
 
 sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_count_hisp = mean(ACS16_5yr_B03002012), median_count_hisp = median(ACS16_5yr_B03002012)) 
