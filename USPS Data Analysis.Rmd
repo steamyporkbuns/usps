@@ -104,7 +104,7 @@ names(df)[2:61] <- paste0(names(df)[2:61], sep = "-", "2008")
 # Add "2008" suffix to the first year
 ```
 
-## Initial subsetting of the data
+## Subsetting of the data and joining to shapefiles
 ```{r}
 # Filter for California 06- and Los Angeles County -037-
 
@@ -116,6 +116,33 @@ la_county <- df %>% filter(State == "06" & County == "037")
 
 alameda_county <- df %>% filter(State == "06" & County == "001")
 # Filtered for census tracts in California and Alameda County.
+
+la_shp <- st_read("\\Users\\edwinysun\\Box\\Terner Center_Summer 2019\\USPS Data\\Raw data\\Shapefiles\\CENSUS_TRACTS_2010.shp")
+la_shp <- rename(la_shp, GEOID = GEOID10)
+la_shp <- right_join(df, la_shp, by = "GEOID")
+
+la_shp <- la_shp %>% mutate(PROP_NOSTAT_RES = NOSTAT_RES/AMS_RES) %>% select(GEOID, State, County, YEAR, PROP_NOSTAT_RES, everything())
+# Reading in LA shapefiles, joining to occupancy data, and creating a proportion nostat variable.
+
+alameda_shp <- st_read("\\Users\\edwinysun\\Box\\Terner Center_Summer 2019\\USPS Data\\Raw data\\Shapefiles\\geo_export_e7743e61-6b88-4db0-9252-b97da0a07018.shp")
+alameda_shp <- rename(alameda_shp, GEOID = geoid10, x_center = intptlat10, y_center = intptlon10)
+alameda_shp <- right_join(df, alameda_shp, by = "GEOID")
+
+alameda_shp <- alameda_shp %>% mutate(PROP_NOSTAT_RES = NOSTAT_RES/AMS_RES) %>% select(GEOID, State, County, YEAR, PROP_NOSTAT_RES, everything())
+alameda_shp <- st_as_sf(alameda_shp)
+alameda_shp <- st_transform(alameda_shp, crs = "+init=epsg:2227")
+# Reading in Alameda shapefiles, joining to occupancy data, and creating a proportion nostat variable.
+
+sf_shp <- st_read("\\Users\\edwinysun\\Box\\Terner Center_Summer 2019\\USPS Data\\Raw data\\Shapefiles\\geo_export_d67a3e99-216a-4ca5-ac2c-5549ecee5acb.shp")
+sf_shp <- rename(sf_shp, GEOID = geoid10, x_center = intptlat10, y_center = intptlon10)
+sf_shp <- right_join(df, sf_shp, by = "GEOID")
+
+sf_shp <- sf_shp %>% mutate(PROP_NOSTAT_RES = NOSTAT_RES/AMS_RES) %>% select(GEOID, State, County, YEAR, PROP_NOSTAT_RES, everything())
+
+sf_shp <- st_as_sf(sf_shp)
+sf_shp <- st_transform(sf_shp, crs = "+init=epsg:2227")
+# Reading in SF shapefiles, joining to occupancy data, and creating a proportion nostat variable.
+
 ```
 
 # Summary statistics and visualizations of Los Angeles residential vacancy
@@ -217,9 +244,6 @@ ggsave("alameda_county.png", width = 9, height = 7)
 
 # GIS visualizations of the res_nostat variable for LA
 ```{r}
-la_shp <- st_read("\\Users\\edwinysun\\Box\\Terner Center_Summer 2019\\USPS Data\\Raw data\\Shapefiles\\CENSUS_TRACTS_2010.shp")
-la_shp <- rename(la_shp, GEOID = GEOID10)
-la_shp <- right_join(df, la_shp, by = "GEOID")
 
 ggplot() + geom_sf(data = la_shp, aes(fill = "NOSTAT_RES-2008", palette = "Blues")) + ylim(1700000, 2130000) + ggtitle("LA 2008")
 ggsave("LA 2008.png", width = 8, height = 8)
@@ -228,8 +252,6 @@ ggplot() + geom_sf(data = la_shp, aes(fill = "NOSTAT_RES-2018", palette = "Blues
 ggsave("LA 2018.png", width = 8, height = 8)
 
 # We should gather the data into a long table and facet wrap by year, and also re-express the nostat counts as proportions of total residential.
-
-la_shp <- la_shp %>% mutate(PROP_NOSTAT_RES = NOSTAT_RES/AMS_RES) %>% select(GEOID, State, County, YEAR, PROP_NOSTAT_RES, everything())
 
 ggplot() + geom_sf(data = la_shp, aes(fill = "PROP_NOSTAT_RES")) + scale_fill_viridis_d(option = "plasma") + ylim(1700000, 2130000) + facet_wrap(~YEAR) + ggtitle("LA 2008-2018")
 ggsave("LA 2008-2018.png", width = 24, height = 24)
@@ -253,13 +275,6 @@ la_shp %>%
 
 # GIS visualizations of the nostat_res variable for Alameda
 ```{r}
-alameda_shp <- st_read("\\Users\\edwinysun\\Box\\Terner Center_Summer 2019\\USPS Data\\Raw data\\Shapefiles\\geo_export_e7743e61-6b88-4db0-9252-b97da0a07018.shp")
-alameda_shp <- rename(alameda_shp, GEOID = geoid10, x_center = intptlat10, y_center = intptlon10)
-alameda_shp <- right_join(df, alameda_shp, by = "GEOID")
-
-alameda_shp <- alameda_shp %>% mutate(PROP_NOSTAT_RES = NOSTAT_RES/AMS_RES) %>% select(GEOID, State, County, YEAR, PROP_NOSTAT_RES, everything())
-alameda_shp <- st_as_sf(alameda_shp)
-alameda_shp <- st_transform(alameda_shp, crs = "+init=epsg:2227")
 
 for (i in unique(alameda_shp$YEAR)){
 alameda_shp %>% 
@@ -280,14 +295,6 @@ alameda_shp %>%
 
 # GIS visualizations of the nostat_res variable for SF
 ```{r}
-sf_shp <- st_read("\\Users\\edwinysun\\Box\\Terner Center_Summer 2019\\USPS Data\\Raw data\\Shapefiles\\geo_export_d67a3e99-216a-4ca5-ac2c-5549ecee5acb.shp")
-sf_shp <- rename(sf_shp, GEOID = geoid10, x_center = intptlat10, y_center = intptlon10)
-sf_shp <- right_join(df, sf_shp, by = "GEOID")
-
-sf_shp <- sf_shp %>% mutate(PROP_NOSTAT_RES = NOSTAT_RES/AMS_RES) %>% select(GEOID, State, County, YEAR, PROP_NOSTAT_RES, everything())
-
-sf_shp <- st_as_sf(sf_shp)
-sf_shp <- st_transform(sf_shp, crs = "+init=epsg:2227")
 
 for (i in unique(sf_shp$YEAR)){
 sf_shp %>% 
@@ -298,14 +305,14 @@ sf_shp %>%
 }
 ```
 
-# Grouping LA occupancy-type/year pairs into quintiles and joining to ACS 2016 data
+# Joining in ACS and Census data
 ```{r}
 acs <- read.csv("C:\\Users\\edwinysun\\Box\\Terner Center_Summer 2019\\USPS Data\\Raw data\\ACS\\Aggregated_Nghbr_Census&ACS_1990to2016.csv")
 
 # The acs data is wide, and the LA/SF/Alameda data are long. To merge, we have to spread the county data and join by GEOID
 # It is difficult to group_by year to compute quintiles in wide. Gather the LA/SF/Alameda data into even longer format in order to add indicator variables for each census tract's quantile grouping for each occupancy variable.
 
-acs <- acs %>% select("Geo_GEOID", "ACS16_5yr_B25003002", "ACS16_5yr_B25003003", "ACS16_5yr_B25024001", "ACS16_5yr_B25024002", "ACS16_5yr_B03002001", "ACS16_5yr_B03002003", "ACS16_5yr_B03002004", "ACS16_5yr_B03002005", "ACS16_5yr_B03002006", "ACS16_5yr_B03002007", "ACS16_5yr_B03002008", "ACS16_5yr_B03002009", "ACS16_5yr_B03002012", "ACS16_5yr_B19001001", "ACS16_5yr_B19001002", "ACS16_5yr_B19001003", "ACS16_5yr_B19001004", "ACS16_5yr_B19001005", "ACS16_5yr_B19001006", "ACS16_5yr_B19001007", "ACS16_5yr_B19001008", "ACS16_5yr_B19001009", "ACS16_5yr_B19001010", "ACS16_5yr_B19001011", "ACS16_5yr_B19001012", "ACS16_5yr_B19001013", "ACS16_5yr_B19001014", "ACS16_5yr_B19001015", "ACS16_5yr_B19001016", "ACS16_5yr_B19001017", "ACS16_5yr_B15003001", "ACS16_5yr_B15003002", "ACS16_5yr_B15003003", "ACS16_5yr_B15003004", "ACS16_5yr_B15003005", "ACS16_5yr_B15003006", "ACS16_5yr_B15003007", "ACS16_5yr_B15003008", "ACS16_5yr_B15003009", "ACS16_5yr_B15003010", "ACS16_5yr_B15003011", "ACS16_5yr_B15003012", "ACS16_5yr_B15003013", "ACS16_5yr_B15003014", "ACS16_5yr_B15003015", "ACS16_5yr_B15003016", "ACS16_5yr_B15003017", "ACS16_5yr_B15003018", "ACS16_5yr_B15003019", "ACS16_5yr_B15003020", "ACS16_5yr_B15003021", "ACS16_5yr_B15003022", "ACS16_5yr_B15003023", "ACS16_5yr_B15003024", "ACS16_5yr_B15003025", "ACS16_5yr_B19057001", "ACS16_5yr_B19057002", "ACS16_5yr_B19057003")
+acs <- acs %>% select("Geo_GEOID", "ACS16_5yr_B25003002", "ACS16_5yr_B25003003", "ACS16_5yr_B25024001", "ACS16_5yr_B25024002", "ACS16_5yr_B03002001", "ACS16_5yr_B03002003", "ACS16_5yr_B03002004", "ACS16_5yr_B03002005", "ACS16_5yr_B03002006", "ACS16_5yr_B03002007", "ACS16_5yr_B03002008", "ACS16_5yr_B03002009", "ACS16_5yr_B03002012", "ACS16_5yr_B19001001", "ACS16_5yr_B19001002", "ACS16_5yr_B19001003", "ACS16_5yr_B19001004", "ACS16_5yr_B19001005", "ACS16_5yr_B19001006", "ACS16_5yr_B19001007", "ACS16_5yr_B19001008", "ACS16_5yr_B19001009", "ACS16_5yr_B19001010", "ACS16_5yr_B19001011", "ACS16_5yr_B19001012", "ACS16_5yr_B19001013", "ACS16_5yr_B19001014", "ACS16_5yr_B19001015", "ACS16_5yr_B19001016", "ACS16_5yr_B19001017", "ACS16_5yr_B15003001", "ACS16_5yr_B15003002", "ACS16_5yr_B15003003", "ACS16_5yr_B15003004", "ACS16_5yr_B15003005", "ACS16_5yr_B15003006", "ACS16_5yr_B15003007", "ACS16_5yr_B15003008", "ACS16_5yr_B15003009", "ACS16_5yr_B15003010", "ACS16_5yr_B15003011", "ACS16_5yr_B15003012", "ACS16_5yr_B15003013", "ACS16_5yr_B15003014", "ACS16_5yr_B15003015", "ACS16_5yr_B15003016", "ACS16_5yr_B15003017", "ACS16_5yr_B15003018", "ACS16_5yr_B15003019", "ACS16_5yr_B15003020", "ACS16_5yr_B15003021", "ACS16_5yr_B15003022", "ACS16_5yr_B15003023", "ACS16_5yr_B15003024", "ACS16_5yr_B15003025", "ACS16_5yr_B19057001", "ACS16_5yr_B19057002", "ACS16_5yr_B19057003", "RC2000SF1_RC2000SF1_012_H004002", "RC2000SF1_RC2000SF1_012_H004003", "RC2000SF3_RC2000SF3_022_H030001", "RC2000SF3_RC2000SF3_022_H030002", "RC1990SF1_RC1990SF1_001_P010_001", "RC1990SF1_RC1990SF1_001_P010_003", "RC1990SF1_RC1990SF1_001_P010_004", "RC1990SF1_RC1990SF1_001_P010_005", "RC1990SF1_RC1990SF1_001_P010_006", "RC1990SF1_RC1990SF1_001_P010_007", "RC1990SF1_RC1990SF1_001_P010_008", "RC2000SF3_006_P052001", "RC2000SF3_006_P052002", "RC2000SF3_006_P052003", "RC2000SF3_006_P052004", "RC2000SF3_006_P052005", "RC2000SF3_006_P052006", "RC2000SF3_006_P052007", "RC2000SF3_006_P052008", "RC2000SF3_006_P052009", "RC2000SF3_006_P052010", "RC2000SF3_006_P052011", "RC2000SF3_006_P052012", "RC2000SF3_006_P052013", "RC2000SF3_006_P052014", "RC2000SF3_006_P052015", "RC2000SF3_006_P052016", "RC2000SF3_006_P052017", "RC2000SF3_004_P037001", "RC2000SF3_004_P037003", "RC2000SF3_004_P037004", "RC2000SF3_004_P037005", "RC2000SF3_004_P037006", "RC2000SF3_004_P037007", "RC2000SF3_004_P037008", "RC2000SF3_004_P037009", "RC2000SF3_004_P037010", "RC2000SF3_004_P037011", "RC2000SF3_004_P037012", "RC2000SF3_004_P037013", "RC2000SF3_004_P037014", "RC2000SF3_004_P037015", "RC2000SF3_004_P037016", "RC2000SF3_004_P037017", "RC2000SF3_004_P037018", "RC2000SF3_004_P037020", "RC2000SF3_004_P037021", "RC2000SF3_004_P037022", "RC2000SF3_004_P037023", "RC2000SF3_004_P037024", "RC2000SF3_004_P037025", "RC2000SF3_004_P037026", "RC2000SF3_004_P037027", "RC2000SF3_004_P037028", "RC2000SF3_004_P037029", "RC2000SF3_004_P037030", "RC2000SF3_004_P037031", "RC2000SF3_004_P037032", "RC2000SF3_004_P037033", "RC2000SF3_004_P037034", "RC2000SF3_004_P037035")
 # Dropping irrelevant ACS variables.
 
 acs <- acs %>% separate(col = Geo_GEOID, into = c(NA, "GEOID"), sep = "US")
@@ -314,6 +321,19 @@ acs <- acs %>% separate(col = Geo_GEOID, into = c(NA, "GEOID"), sep = "US")
 acs <- acs %>% mutate(prop_hisp = ACS16_5yr_B03002012/ACS16_5yr_B03002001, prop_black = ACS16_5yr_B03002004/ACS16_5yr_B03002001, prop_sfh = ACS16_5yr_B25024002/ACS16_5yr_B25024001, prop_hs_or_less = (ACS16_5yr_B15003002 + ACS16_5yr_B15003003 + ACS16_5yr_B15003004 + ACS16_5yr_B15003005 + ACS16_5yr_B15003006 + ACS16_5yr_B15003007 + ACS16_5yr_B15003008 + ACS16_5yr_B15003009 + ACS16_5yr_B15003010 + ACS16_5yr_B15003011 + ACS16_5yr_B15003012 + ACS16_5yr_B15003013 + ACS16_5yr_B15003014 + ACS16_5yr_B15003015 + ACS16_5yr_B15003016 + ACS16_5yr_B15003017 + ACS16_5yr_B15003018)/ACS16_5yr_B15003001, prop_collgrad = ACS16_5yr_B15003022/ACS16_5yr_B15003001, prop_postbac = (ACS16_5yr_B15003023 + ACS16_5yr_B15003024 + ACS16_5yr_B15003025)/ACS16_5yr_B15003001, prop_below_25k = (ACS16_5yr_B19001002 + ACS16_5yr_B19001003 + ACS16_5yr_B19001004 + ACS16_5yr_B19001005)/ACS16_5yr_B19001001, prop_over_100k = (ACS16_5yr_B19001014 + ACS16_5yr_B19001015 + ACS16_5yr_B19001016 + ACS16_5yr_B19001017)/ACS16_5yr_B19001001)
 # Reexpressing the demographic variables as proportions. 
 
+census_2010 <- read.csv("C:\\Users\\edwinysun\\Box\\Terner Center_Summer 2019\\USPS Data\\Raw data\\ACS\\ACS_0812\\R12236576_SL140.csv")
+
+census_2010 <- census_2010 %>% select(Geo_FIPS, Geo_GEOID, "SE_A10032_001", "SE_A10032_003", "SE_A04001_001", "SE_A04001_003", "SE_A04001_004", "SE_A04001_005", "SE_A04001_006", "SE_A04001_007", "SE_A04001_008", "SE_A04001_009", "SE_A04001_010", "SE_A14001_001", "SE_A14001_002", "SE_A14001_003", "SE_A14001_004", "SE_A14001_005", "SE_A14001_006", "SE_A14001_007", "SE_A14001_008", "SE_A14001_009", "SE_A14001_010", "SE_A14001_011", "SE_A14001_012", "SE_A14001_013", "SE_A14001_014", "SE_A14001_015", "SE_A14001_016", "SE_A14001_017", "SE_A12001_001", "SE_A12001_002", "SE_A12001_003", "SE_A12001_004", "SE_A12001_005", "SE_A12001_006", "SE_A12001_007", "SE_A12001_008")
+
+census_2010 <- census_2010 %>% rename(GEOID = Geo_GEOID)
+
+acs <- left_join(acs, census_2010)
+# Pulling 2010 census data into the ACS data that was missing from Terner's database.
+
+```
+# Grouping LA occupancy-type/year pairs into quintiles and joining to ACS data
+
+```{r}
 la_quintiles <- la_shp %>% select(-c(66:73))
 # Dropped the geometry because it was messing up the gather.
 
@@ -336,7 +356,7 @@ la_quintiles <- la_quintiles %>% mutate(quintile = case_when(counts <= quintile1
                                                                    (counts > quintile3 & counts <= quintile4) ~ 4,
                                                                    counts > quintile4 ~ 5,
                                                                    TRUE ~ 0)
-                                              )
+                                        )
 # Created quintile ranks for each occupancy type/year grouping.
 
 la_quintiles <- la_quintiles %>% select(GEOID, key, quintile)
@@ -387,7 +407,8 @@ la_demographics <- la_demographics %>% mutate(count_nostat_low_to_high = case_wh
 
 ```
 
-# Grouping Alameda occupancy-type/year pairs into quintiles and joining to ACS 2016 data
+
+# Grouping Alameda occupancy-type/year pairs into quintiles and joining to ACS data
 ```{r}
 alameda_shp <- alameda_shp %>% st_set_geometry(NULL)
 
@@ -457,7 +478,7 @@ alameda_demographics <- alameda_demographics %>%
 
 ```
 
-# Grouping SF occupancy-type/year pairs into quintiles and joining to ACS 2016 data
+# Grouping SF occupancy-type/year pairs into quintiles and joining to ACS data
 ```{r}
 sf_shp <- sf_shp %>% st_set_geometry(NULL)
 
@@ -782,5 +803,10 @@ sf_demographics %>% group_by(`PROP_NOSTAT_RES-2016`) %>% summarise(avg_prop_belo
 
 sf_demographics %>% group_by(`NOSTAT_RES-2016`) %>% summarise(avg_prop_below_25k = mean(prop_below_25k), median_prop_below_25k = median(prop_below_25k))
 # Descriptives on count of householders earning less than 25k by nostat quintiles
+```
+
+# Functions for pulling stats from each county and each type of statistic
+```{r}
+
 ```
 
